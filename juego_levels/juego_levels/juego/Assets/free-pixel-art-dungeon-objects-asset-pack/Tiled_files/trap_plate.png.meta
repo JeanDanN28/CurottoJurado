@@ -922,7 +922,39 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      trap_plate_0: -836905237980388007
+      trap_plate_1: -2277691727256752740
+      trap_plate_10: 1645273467115091352
+      trap_plate_11: -5702650554572126751
+      trap_plate_12: 4834837762568743693
+      trap_plate_13: 3319950224890261708
+      trap_plate_14: 4616757035092539439
+      trap_plate_15: -8084979503660412666
+      trap_plate_16: 2058802334567010909
+      trap_plate_17: -2096042132798133557
+      trap_plate_18: -1250537028242279768
+      trap_plate_19: -6937787014549281609
+      trap_plate_2: 3110695258752866296
+      trap_plate_20: -9048369321385839151
+      trap_plate_21: 5274879085935154410
+      trap_plate_22: -6350145675640788018
+      trap_plate_23: -6134038540559405011
+      trap_plate_24: -6309793761013145117
+      trap_plate_25: 6185759288932976047
+      trap_plate_26: 3342051119887288394
+      trap_plate_27: -5109135046656201676
+      trap_plate_28: 4729710655201412759
+      trap_plate_29: 162824257645713170
+      trap_plate_3: 169527967748847969
+      trap_plate_30: -6908588571951014952
+      trap_plate_31: 266625078577201683
+      trap_plate_4: 8874846814200895508
+      trap_plate_5: -6743756960902843762
+      trap_plate_6: 8610235001565260054
+      trap_plate_7: 4639062996170573380
+      trap_plate_8: -3633670932757466577
+      trap_plate_9: 1235415802825925192
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

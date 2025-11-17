@@ -65,53 +65,70 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
-        if (isDashing || currentHealth <= 0) return;
+        // Solo detenemos el Update si está en Dash
+        if (isDashing) return;
 
-        horizontal = Input.GetAxisRaw("Horizontal");
+        // --- INICIO DE LA CORRECCIÓN ---
 
-        // Comprobar suelo
-        bool wasGrounded = isGrounded;
-        isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer);
-        if (!wasGrounded && isGrounded)
-            jumpsRemaining = maxJumps;
-
-        // ------------------- DEFENSA -------------------
-        if (Input.GetKeyDown(KeyCode.Q))
-            StartCoroutine(StartDefense());
-        if (Input.GetKeyUp(KeyCode.Q))
-            StopDefense();
-        // ------------------------------------------------
-
-        // No permitir atacar ni hacer dash si está defendiendo
-        if (!isDefending)
+        // Solo procesamos inputs (movimiento, salto, ataque) si el jugador está VIVO
+        if (currentHealth > 0)
         {
-            if (Input.GetKeyDown(KeyCode.LeftShift) && Time.time - lastDash >= dashCooldown && isGrounded)
+            horizontal = Input.GetAxisRaw("Horizontal");
+
+            // Comprobar suelo
+            bool wasGrounded = isGrounded;
+            isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer);
+            if (!wasGrounded && isGrounded)
+                jumpsRemaining = maxJumps;
+
+            // ------------------- DEFENSA -------------------
+            if (Input.GetKeyDown(KeyCode.Q))
+                StartCoroutine(StartDefense());
+            if (Input.GetKeyUp(KeyCode.Q))
+                StopDefense();
+            // ------------------------------------------------
+
+            // No permitir atacar ni hacer dash si está defendiendo
+            if (!isDefending)
             {
-                SetFacing(horizontal >= 0 ? 1 : -1);
-                StartCoroutine(PerformDash());
+                if (Input.GetKeyDown(KeyCode.LeftShift) && Time.time - lastDash >= dashCooldown && isGrounded)
+                {
+                    SetFacing(horizontal >= 0 ? 1 : -1);
+                    StartCoroutine(PerformDash());
+                }
+
+                if (Input.GetButtonDown("Jump") && jumpsRemaining > 0)
+                {
+                    jumpsRemaining--;
+                    rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0f);
+                    rb.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
+                }
+
+                if (Input.GetKeyDown(KeyCode.E) && Time.time - lastAttack >= attackCooldown)
+                {
+                    lastAttack = Time.time;
+                    anim?.SetTrigger("MeleeAttack");
+                }
             }
 
-            if (Input.GetButtonDown("Jump") && jumpsRemaining > 0)
-            {
-                jumpsRemaining--;
-                rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0f);
-                rb.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
-            }
-
-            if (Input.GetKeyDown(KeyCode.E) && Time.time - lastAttack >= attackCooldown)
-            {
-                lastAttack = Time.time;
-                anim?.SetTrigger("MeleeAttack");
-            }
+            // Dirección
+            if (horizontal > 0.1f) SetFacing(1);
+            else if (horizontal < -0.1f) SetFacing(-1);
         }
+        else
+        {
+            // Si estamos muertos, nos aseguramos de que 'horizontal' sea 0
+            // para que la animación de "running" no se quede pegada.
+            horizontal = 0f;
+        }
+        // --- FIN DE LA CORRECCIÓN ---
 
-        // Dirección
-        if (horizontal > 0.1f) SetFacing(1);
-        else if (horizontal < -0.1f) SetFacing(-1);
 
         // Actualizar animaciones
+        // ESTE BLOQUE AHORA ESTÁ AFUERA DEL 'IF' Y SIEMPRE SE EJECUTA
         if (anim != null)
         {
+            // Al morir, 'horizontal' será 0 y 'running' se pondrá en false
             anim.SetBool("running", Mathf.Abs(horizontal) > 0.1f);
             anim.SetBool("isGrounded", isGrounded);
             anim.SetBool("isDashing", isDashing);
@@ -176,24 +193,37 @@ public class PlayerController : MonoBehaviour
     // -----------------------------------------
 
     public void TakeDamage(int damage)
+    // Reemplaza tu función TakeDamage con esta:
     {
+        // Si ya estamos muertos, no hacer nada
         if (currentHealth <= 0) return;
 
+        // Calcular daño final (con defensa)
         int finalDamage = isDefending ? Mathf.CeilToInt(damage * defenseReduction) : damage;
         currentHealth -= finalDamage;
 
-        if (isDefending)
-            anim?.SetTrigger("BlockHit");
-        else
-            anim?.SetTrigger("Hurt");
-
+        // Actualizar la UI de corazones
+        healthUI?.UpdateHearts(currentHealth);
+        
         Debug.Log($"Vida restante: {currentHealth}");
 
-        // ✅ Actualiza los corazones usando la referencia guardada
-        healthUI?.UpdateHearts(currentHealth);
-
+        // --- LÓGICA CORREGIDA AQUÍ ---
+        // Revisamos la vida DESPUÉS de hacer el daño
         if (currentHealth <= 0)
+        {
+            // 1. Si la vida es 0 o menos, solo morimos.
+            // ¡Ya NO llamamos a "Hurt"!
             Die();
+        }
+        else
+        {
+            // 2. Si sobrevivimos al golpe, entonces sí
+            // reproducimos la animación de "Hurt" o "Block".
+            if (isDefending)
+                anim?.SetTrigger("BlockHit");
+            else
+                anim?.SetTrigger("Hurt");
+        }
     }
 
     public int GetCurrentHealth() => currentHealth;
@@ -202,7 +232,7 @@ public class PlayerController : MonoBehaviour
     {
         Debug.Log("El héroe ha muerto. Iniciando Game Over.");
         anim?.SetTrigger("Die");
-        StartCoroutine(GameOverSequence(1.5f));
+        StartCoroutine(GameOverSequence(2f));
     }
 
     IEnumerator GameOverSequence(float delay)

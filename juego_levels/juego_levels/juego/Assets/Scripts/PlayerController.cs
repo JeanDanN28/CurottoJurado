@@ -3,6 +3,7 @@ using System.Collections;
 using UnityEngine.SceneManagement;
 
 [RequireComponent(typeof(Rigidbody2D))]
+[RequireComponent(typeof(AudioSource))]
 public class PlayerController : MonoBehaviour
 {
     [Header("Movimiento")]
@@ -25,9 +26,9 @@ public class PlayerController : MonoBehaviour
     private bool isDashing = false;
 
     [Header("Salud del Jugador")]
-    [SerializeField] int maxHealth = 8; // ajustado a 8 para los corazones
+    [SerializeField] int maxHealth = 8;
     private int currentHealth;
-    private HealthUI healthUI; // ✅ Referencia guardada
+    private HealthUI healthUI;
 
     [Header("Ataque Cuerpo a Cuerpo")]
     [SerializeField] Transform attackPoint;
@@ -42,8 +43,16 @@ public class PlayerController : MonoBehaviour
     private bool isDefending = false;
     [SerializeField] float defenseDelay = 0.1f;
 
+    [Header("Sonidos")]
+    [SerializeField] AudioClip jumpSFX;
+    [SerializeField] AudioClip dashSFX;
+    [SerializeField] AudioClip deathSFX;
+    [SerializeField] AudioClip attackSFX;
+
     Rigidbody2D rb;
     Animator anim;
+    AudioSource audioSource;
+
     bool isGrounded;
     float horizontal;
     int facing = 1;
@@ -52,43 +61,36 @@ public class PlayerController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody2D>();
         anim = GetComponent<Animator>();
+        audioSource = GetComponent<AudioSource>();
+
         currentHealth = maxHealth;
         jumpsRemaining = maxJumps;
     }
 
     void Start()
     {
-        // ✅ Buscar una vez el HealthUI y actualizar corazones al inicio
         healthUI = Object.FindFirstObjectByType<HealthUI>();
         healthUI?.UpdateHearts(currentHealth);
     }
 
     void Update()
     {
-        // Solo detenemos el Update si está en Dash
         if (isDashing) return;
 
-        // --- INICIO DE LA CORRECCIÓN ---
-
-        // Solo procesamos inputs (movimiento, salto, ataque) si el jugador está VIVO
         if (currentHealth > 0)
         {
             horizontal = Input.GetAxisRaw("Horizontal");
 
-            // Comprobar suelo
             bool wasGrounded = isGrounded;
             isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer);
             if (!wasGrounded && isGrounded)
                 jumpsRemaining = maxJumps;
 
-            // ------------------- DEFENSA -------------------
             if (Input.GetKeyDown(KeyCode.Q))
                 StartCoroutine(StartDefense());
             if (Input.GetKeyUp(KeyCode.Q))
                 StopDefense();
-            // ------------------------------------------------
 
-            // No permitir atacar ni hacer dash si está defendiendo
             if (!isDefending)
             {
                 if (Input.GetKeyDown(KeyCode.LeftShift) && Time.time - lastDash >= dashCooldown && isGrounded)
@@ -102,6 +104,9 @@ public class PlayerController : MonoBehaviour
                     jumpsRemaining--;
                     rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0f);
                     rb.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
+
+                    // 🔊 Sonido de salto
+                    audioSource.PlayOneShot(jumpSFX);
                 }
 
                 if (Input.GetKeyDown(KeyCode.E) && Time.time - lastAttack >= attackCooldown)
@@ -111,24 +116,16 @@ public class PlayerController : MonoBehaviour
                 }
             }
 
-            // Dirección
             if (horizontal > 0.1f) SetFacing(1);
             else if (horizontal < -0.1f) SetFacing(-1);
         }
         else
         {
-            // Si estamos muertos, nos aseguramos de que 'horizontal' sea 0
-            // para que la animación de "running" no se quede pegada.
             horizontal = 0f;
         }
-        // --- FIN DE LA CORRECCIÓN ---
 
-
-        // Actualizar animaciones
-        // ESTE BLOQUE AHORA ESTÁ AFUERA DEL 'IF' Y SIEMPRE SE EJECUTA
         if (anim != null)
         {
-            // Al morir, 'horizontal' será 0 y 'running' se pondrá en false
             anim.SetBool("running", Mathf.Abs(horizontal) > 0.1f);
             anim.SetBool("isGrounded", isGrounded);
             anim.SetBool("isDashing", isDashing);
@@ -163,6 +160,10 @@ public class PlayerController : MonoBehaviour
     {
         lastDash = Time.time;
         isDashing = true;
+
+        // 🔊 Sonido de dash
+        audioSource.PlayOneShot(dashSFX);
+
         float originalGravity = rb.gravityScale;
 
         rb.gravityScale = 0f;
@@ -176,49 +177,35 @@ public class PlayerController : MonoBehaviour
         rb.linearVelocity = new Vector2(rb.linearVelocity.x * 0.5f, rb.linearVelocity.y);
     }
 
-    // ---------------- DEFENSA ----------------
     IEnumerator StartDefense()
     {
         yield return new WaitForSeconds(defenseDelay);
         isDefending = true;
         rb.linearVelocity = Vector2.zero;
-        Debug.Log("Jugador está defendiendo 🛡️");
     }
 
     void StopDefense()
     {
         isDefending = false;
-        Debug.Log("Jugador dejó de defenderse");
     }
-    // -----------------------------------------
 
     public void TakeDamage(int damage)
-    // Reemplaza tu función TakeDamage con esta:
     {
-        // Si ya estamos muertos, no hacer nada
         if (currentHealth <= 0) return;
 
-        // Calcular daño final (con defensa)
         int finalDamage = isDefending ? Mathf.CeilToInt(damage * defenseReduction) : damage;
         currentHealth -= finalDamage;
 
-        // Actualizar la UI de corazones
         healthUI?.UpdateHearts(currentHealth);
-        
+
         Debug.Log($"Vida restante: {currentHealth}");
 
-        // --- LÓGICA CORREGIDA AQUÍ ---
-        // Revisamos la vida DESPUÉS de hacer el daño
         if (currentHealth <= 0)
         {
-            // 1. Si la vida es 0 o menos, solo morimos.
-            // ¡Ya NO llamamos a "Hurt"!
             Die();
         }
         else
         {
-            // 2. Si sobrevivimos al golpe, entonces sí
-            // reproducimos la animación de "Hurt" o "Block".
             if (isDefending)
                 anim?.SetTrigger("BlockHit");
             else
@@ -231,6 +218,10 @@ public class PlayerController : MonoBehaviour
     void Die()
     {
         Debug.Log("El héroe ha muerto. Iniciando Game Over.");
+
+        // 🔊 Sonido de muerte
+        audioSource.PlayOneShot(deathSFX);
+
         anim?.SetTrigger("Die");
         StartCoroutine(GameOverSequence(2f));
     }

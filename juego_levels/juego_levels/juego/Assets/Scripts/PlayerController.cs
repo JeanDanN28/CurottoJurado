@@ -106,13 +106,14 @@ public class PlayerController : MonoBehaviour
                     rb.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
 
                     // 🔊 Sonido de salto
-                    audioSource.PlayOneShot(jumpSFX);
+                    if(audioSource && jumpSFX) audioSource.PlayOneShot(jumpSFX);
                 }
 
                 if (Input.GetKeyDown(KeyCode.E) && Time.time - lastAttack >= attackCooldown)
                 {
                     lastAttack = Time.time;
                     anim?.SetTrigger("MeleeAttack");
+                    DoAttack(); // Llamamos a la función de ataque
                 }
             }
 
@@ -162,7 +163,7 @@ public class PlayerController : MonoBehaviour
         isDashing = true;
 
         // 🔊 Sonido de dash
-        audioSource.PlayOneShot(dashSFX);
+        if(audioSource && dashSFX) audioSource.PlayOneShot(dashSFX);
 
         float originalGravity = rb.gravityScale;
 
@@ -220,7 +221,7 @@ public class PlayerController : MonoBehaviour
         Debug.Log("El héroe ha muerto. Iniciando Game Over.");
 
         // 🔊 Sonido de muerte
-        audioSource.PlayOneShot(deathSFX);
+        if(audioSource && deathSFX) audioSource.PlayOneShot(deathSFX);
 
         anim?.SetTrigger("Die");
         StartCoroutine(GameOverSequence(2f));
@@ -242,16 +243,36 @@ public class PlayerController : MonoBehaviour
             SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
+    // ---------------------------------------------------------
+    // ESTA ES LA PARTE CORREGIDA PARA PEGARLE AL BOSS
+    // ---------------------------------------------------------
     public void DoAttack()
     {
+        // 🔊 Sonido de ataque (Lo tenías definido pero no lo usabas)
+        if (audioSource != null && attackSFX != null)
+        {
+            audioSource.PlayOneShot(attackSFX);
+        }
+
         if (attackPoint == null) return;
 
         Collider2D[] hits = Physics2D.OverlapCircleAll(attackPoint.position, attackRange, enemyLayer);
         foreach (var hit in hits)
         {
+            // 1. Revisar si es un enemigo simple
             var enemy = hit.GetComponent<EnemySimple>();
             if (enemy != null)
+            {
                 enemy.TakeDamage(attackDamage);
+            }
+
+            // 2. Revisar si es el Boss (ESTO FALTABA)
+            var boss = hit.GetComponent<BossGolem>();
+            if (boss != null)
+            {
+                boss.TakeDamage(attackDamage);
+                Debug.Log("¡Le pegaste al Boss!");
+            }
         }
     }
 

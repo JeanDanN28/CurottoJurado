@@ -1,4 +1,6 @@
 using UnityEngine;
+using System.Collections; // Necesario para Corrutinas
+using UnityEngine.SceneManagement; // Necesario para cambiar de nivel
 
 public class BossGolem : MonoBehaviour
 {
@@ -16,10 +18,19 @@ public class BossGolem : MonoBehaviour
     public bool isGrounded;
 
     [Header("Combate")]
-    public GameObject handHitbox; // <-- NUEVO: Arrastra tu "HandHitbox" aquí
+    public GameObject handHitbox;
     public float attackDistance = 2f;
     public int maxHP = 100;
     private int currentHP;
+
+    // --- AUDIO Y NIVEL ---
+    [Header("Audio y Nivel")]
+    public AudioSource audioSource; 
+    public AudioClip deathSound;    
+    public float waitTimeBeforeLevel = 4f;
+    
+    public string nextLevelName; // <-- AQUI LA PUSE: Escribe el nombre exacto en el Inspector
+    // ----------------------------
 
     private bool isDead = false;
     private bool isAttacking = false;
@@ -29,9 +40,12 @@ public class BossGolem : MonoBehaviour
     {
         anim = GetComponent<Animator>();
         currentHP = maxHP;
-        // <-- NUEVO: Desactivamos el hitbox al empezar, por si acaso
+        
         if (handHitbox != null)
             handHitbox.SetActive(false); 
+
+        if (audioSource == null)
+            audioSource = GetComponent<AudioSource>();
     }
 
     void Update()
@@ -51,7 +65,6 @@ public class BossGolem : MonoBehaviour
             MoveTowardsPlayer();
         }
 
-        // --- Ataque normal ---
         if (dist <= attackDistance && !isAttacking && isGrounded)
         {
             StartAttack();
@@ -65,101 +78,32 @@ public class BossGolem : MonoBehaviour
         }
     }
 
-    // -------------------------
-    // GROUND CHECK
-    // -------------------------
-    void CheckGround()
-    {
-        isGrounded = Physics2D.OverlapCircle(
-            groundCheck.position,
-            groundCheckRadius,
-            groundLayer
-        );
-    }
+    void CheckGround() { isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer); }
+    private void OnDrawGizmosSelected() { if (groundCheck != null) { Gizmos.color = Color.green; Gizmos.DrawWireSphere(groundCheck.position, groundCheckRadius); } }
 
-    private void OnDrawGizmosSelected()
-    {
-        if (groundCheck != null)
-        {
-            Gizmos.color = Color.green;
-            Gizmos.DrawWireSphere(groundCheck.position, groundCheckRadius);
-        }
-    }
-
-    // -------------------------
-    // MOVIMIENTO
-    // -------------------------
     void MoveTowardsPlayer()
     {
         Vector2 dir = (player.position - transform.position).normalized;
-
         transform.position += (Vector3)dir * speed * Time.deltaTime;
-
-        // ---------- LÓGICA DE GIRO CORREGIDA ----------
-
-        // 1. Obtenemos la escala actual que pusiste en el editor
         Vector3 currentScale = transform.localScale;
-        
-        // 2. Si el jugador está a la DERECHA (dir.x > 0)...
-        if (dir.x > 0)
-        {
-            // ...ponemos la 'x' en negativo (para que mire a la DERECHA)
-            // Usamos Mathf.Abs para asegurarnos de que el valor sea siempre positivo
-            // antes de volverlo negativo.
-            currentScale.x = -Mathf.Abs(currentScale.x);
-        }
-        // 3. Si el jugador está a la IZQUIERDA (dir.x < 0)...
-        else if (dir.x < 0)
-        {
-            // ...ponemos la 'x' en positivo (para que mire a la IZQUIERDA)
-            currentScale.x = Mathf.Abs(currentScale.x);
-        }
-
-        // 4. Aplicamos la nueva escala
+        if (dir.x > 0) currentScale.x = -Mathf.Abs(currentScale.x);
+        else if (dir.x < 0) currentScale.x = Mathf.Abs(currentScale.x);
         transform.localScale = currentScale;
     }
 
-    // -------------------------
-    // ATAQUE
-    // -------------------------
-    void StartAttack()
-    {
-        isAttacking = true;
-        anim.SetTrigger("AttackTrigger");
-    }
+    void StartAttack() { isAttacking = true; anim.SetTrigger("AttackTrigger"); }
+    public void EndAttack() { isAttacking = false; }
 
-    // Llamar desde Animation Event
-    public void EndAttack()
-    {
-        isAttacking = false;
-    }
+    public void EnableAttackHitbox() { if (handHitbox != null) handHitbox.SetActive(true); }
+    public void DisableAttackHitbox() { if (handHitbox != null) handHitbox.SetActive(false); }
 
-    // ----------------------------------------------------
-    // <-- NUEVAS FUNCIONES PARA EVENTOS DE ANIMACIÓN -->
-    // ----------------------------------------------------
-    
-    // Esta función la llamarás desde el Evento de Animación
-    public void EnableAttackHitbox()
-    {
-        if (handHitbox != null)
-            handHitbox.SetActive(true);
-    }
-
-    // Esta también la llamarás desde el Evento de Animación
-    public void DisableAttackHitbox()
-    {
-        if (handHitbox != null)
-            handHitbox.SetActive(false);
-    }
-
-    // -------------------------
-    // DAÑO
-    // -------------------------
     public void TakeDamage(int dmg)
     {
         if (isDead) return;
+
         currentHP -= dmg;
         anim.SetTrigger("StunedTrigger");
+
         if (currentHP <= 0)
         {
             Die();
@@ -170,26 +114,39 @@ public class BossGolem : MonoBehaviour
     {
         isDead = true;
         anim.SetTrigger("DeathTrigger");
+        
         Destroy(GetComponent<Collider2D>());
+        Destroy(GetComponent<Rigidbody2D>());
+
+        if (audioSource != null && deathSound != null)
+        {
+            audioSource.PlayOneShot(deathSound);
+        }
+
+        StartCoroutine(LevelTransitionRoutine());
     }
 
-    // -------------------------
-    // OPCIONALES (Sin cambios)
-    // -------------------------
-    public void Jump()
+    IEnumerator LevelTransitionRoutine()
     {
-        if (isDead) return;
-        anim.SetTrigger("JumpTrigger");
+        Debug.Log("El Boss ha muerto. Esperando para cambiar de nivel...");
+        
+        yield return new WaitForSeconds(waitTimeBeforeLevel);
+
+        Debug.Log("Cambiando al nivel: " + nextLevelName);
+        
+        // --- CAMBIO AQUI ---
+        // Ahora usamos el nombre que escribiste en la variable, no el índice.
+        if (!string.IsNullOrEmpty(nextLevelName))
+        {
+            SceneManager.LoadScene(nextLevelName);
+        }
+        else
+        {
+            Debug.LogError("¡ERROR! No has escrito el nombre del siguiente nivel en el Inspector del Boss.");
+        }
     }
 
-    public void Climb()
-    {
-        if (isDead) return;
-        anim.SetTrigger("ClimbTrigger");
-    }
-
-    public void Talk()
-    {
-        anim.SetTrigger("TalkTrigger");
-    }
+    public void Jump() { if (!isDead) anim.SetTrigger("JumpTrigger"); }
+    public void Climb() { if (!isDead) anim.SetTrigger("ClimbTrigger"); }
+    public void Talk() { anim.SetTrigger("TalkTrigger"); }
 }

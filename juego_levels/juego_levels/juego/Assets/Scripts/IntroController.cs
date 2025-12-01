@@ -80,6 +80,6 @@ public class IntroController : MonoBehaviour
 
     void LoadLevel()
     {
-        SceneManager.LoadScene("Level2");
+        SceneManager.LoadScene("Tutorial");
     }
 }

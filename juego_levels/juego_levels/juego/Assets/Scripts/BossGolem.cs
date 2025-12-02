@@ -27,9 +27,10 @@ public class BossGolem : MonoBehaviour
     [Header("Audio y Nivel")]
     public AudioSource audioSource; 
     public AudioClip deathSound;    
+    public AudioClip attackSound; // Opcional: Sonido Swing
     public float waitTimeBeforeLevel = 4f;
     
-    public string nextLevelName; // <-- AQUI LA PUSE: Escribe el nombre exacto en el Inspector
+    public string nextLevelName; // Escribe el nombre exacto de la siguiente escena aquí
     // ----------------------------
 
     private bool isDead = false;
@@ -58,19 +59,22 @@ public class BossGolem : MonoBehaviour
         float dist = Vector2.Distance(transform.position, player.position);
 
         // --- LÓGICA DE MOVIMIENTO ---
+        // Solo camina si NO está atacando Y está lejos del jugador
         bool shouldWalk = !isAttacking && (dist > attackDistance);
         anim.SetBool("isWalking", shouldWalk);
+        
         if (shouldWalk)
         {
             MoveTowardsPlayer();
         }
 
+        // --- Ataque normal ---
         if (dist <= attackDistance && !isAttacking && isGrounded)
         {
             StartAttack();
         }
 
-        // --- Fase especial ---
+        // --- Fase especial (al 50% de vida) ---
         if (!specialUsed && currentHP <= maxHP / 2)
         {
             specialUsed = true;
@@ -78,31 +82,76 @@ public class BossGolem : MonoBehaviour
         }
     }
 
-    void CheckGround() { isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer); }
-    private void OnDrawGizmosSelected() { if (groundCheck != null) { Gizmos.color = Color.green; Gizmos.DrawWireSphere(groundCheck.position, groundCheckRadius); } }
+    void CheckGround() 
+    { 
+        isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer); 
+    }
+
+    private void OnDrawGizmosSelected() 
+    { 
+        if (groundCheck != null) 
+        { 
+            Gizmos.color = Color.green; 
+            Gizmos.DrawWireSphere(groundCheck.position, groundCheckRadius); 
+        } 
+    }
 
     void MoveTowardsPlayer()
     {
         Vector2 dir = (player.position - transform.position).normalized;
         transform.position += (Vector3)dir * speed * Time.deltaTime;
+        
         Vector3 currentScale = transform.localScale;
         if (dir.x > 0) currentScale.x = -Mathf.Abs(currentScale.x);
         else if (dir.x < 0) currentScale.x = Mathf.Abs(currentScale.x);
         transform.localScale = currentScale;
     }
 
-    void StartAttack() { isAttacking = true; anim.SetTrigger("AttackTrigger"); }
-    public void EndAttack() { isAttacking = false; }
+    void StartAttack() 
+    { 
+        isAttacking = true; 
+        anim.SetTrigger("AttackTrigger"); 
+    }
 
-    public void EnableAttackHitbox() { if (handHitbox != null) handHitbox.SetActive(true); }
-    public void DisableAttackHitbox() { if (handHitbox != null) handHitbox.SetActive(false); }
+    // Llamado por Animation Event al final del ataque
+    public void EndAttack() 
+    { 
+        isAttacking = false; 
+    }
 
+    // Llamado por Animation Event en el frame del golpe
+    public void EnableAttackHitbox() 
+    { 
+        if (handHitbox != null) 
+            handHitbox.SetActive(true); 
+            
+        // Sonido de Swing/Ataque (Opcional)
+        if (audioSource != null && attackSound != null)
+            audioSource.PlayOneShot(attackSound);
+    }
+
+    public void DisableAttackHitbox() 
+    { 
+        if (handHitbox != null) 
+            handHitbox.SetActive(false); 
+    }
+
+    // ---------------------------------------------------------
+    // CORRECCIÓN PRINCIPAL AQUÍ:
+    // ---------------------------------------------------------
     public void TakeDamage(int dmg)
     {
         if (isDead) return;
 
+        // 1. SI ESTABA ATACANDO, EL GOLPE LO INTERRUMPE
+        if (isAttacking)
+        {
+            isAttacking = false; // "Olvidamos" que estaba atacando
+            DisableAttackHitbox(); // Apagamos el daño de la mano inmediatamente
+        }
+
         currentHP -= dmg;
-        anim.SetTrigger("StunedTrigger");
+        anim.SetTrigger("StunedTrigger"); // Reproducir animación de dolor
 
         if (currentHP <= 0)
         {
@@ -115,9 +164,11 @@ public class BossGolem : MonoBehaviour
         isDead = true;
         anim.SetTrigger("DeathTrigger");
         
+        // Limpieza de componentes físicos
         Destroy(GetComponent<Collider2D>());
         Destroy(GetComponent<Rigidbody2D>());
 
+        // Sonido de muerte
         if (audioSource != null && deathSound != null)
         {
             audioSource.PlayOneShot(deathSound);
@@ -134,8 +185,6 @@ public class BossGolem : MonoBehaviour
 
         Debug.Log("Cambiando al nivel: " + nextLevelName);
         
-        // --- CAMBIO AQUI ---
-        // Ahora usamos el nombre que escribiste en la variable, no el índice.
         if (!string.IsNullOrEmpty(nextLevelName))
         {
             SceneManager.LoadScene(nextLevelName);
@@ -146,6 +195,7 @@ public class BossGolem : MonoBehaviour
         }
     }
 
+    // Opcionales
     public void Jump() { if (!isDead) anim.SetTrigger("JumpTrigger"); }
     public void Climb() { if (!isDead) anim.SetTrigger("ClimbTrigger"); }
     public void Talk() { anim.SetTrigger("TalkTrigger"); }

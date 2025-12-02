@@ -2611,11 +2611,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7114515743467452856, guid: 35e67b387b115054db2bfd26ae078614, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 21.9
+      value: 133.7
       objectReference: {fileID: 0}
     - target: {fileID: 7114515743467452856, guid: 35e67b387b115054db2bfd26ae078614, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 2.81
+      value: 3.2
       objectReference: {fileID: 0}
     - target: {fileID: 7114515743467452856, guid: 35e67b387b115054db2bfd26ae078614, type: 3}
       propertyPath: m_LocalPosition.z
@@ -70789,7 +70789,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   target: {fileID: 1394398416}
-  offset: {x: 0, y: 2, z: 0}
+  offset: {x: 0, y: 1, z: 0}
 --- !u!114 &414287307
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -73264,7 +73264,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3487479697387693918, guid: abb08ce993549f04ea69db5809d42793, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.9924972
+      value: 0.99407774
       objectReference: {fileID: 0}
     - target: {fileID: 3487479697387693918, guid: abb08ce993549f04ea69db5809d42793, type: 3}
       propertyPath: m_LocalRotation.x
@@ -73276,11 +73276,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3487479697387693918, guid: abb08ce993549f04ea69db5809d42793, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0.122268096
+      value: -0.10867118
       objectReference: {fileID: 0}
     - target: {fileID: 3487479697387693918, guid: abb08ce993549f04ea69db5809d42793, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
-      value: -14.046
+      value: -12.477
       objectReference: {fileID: 0}
     - target: {fileID: 3625407188346920697, guid: abb08ce993549f04ea69db5809d42793, type: 3}
       propertyPath: m_Layer
@@ -242944,6 +242944,7 @@ MonoBehaviour:
   maxHP: 55
   audioSource: {fileID: 1374617246}
   deathSound: {fileID: 8300000, guid: fdb687b92f40976488943c6a52c32e30, type: 3}
+  attackSound: {fileID: 0}
   waitTimeBeforeLevel: 4
   nextLevelName: Level4
 --- !u!70 &1374617244
@@ -371138,11 +371139,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7822635380429503130, guid: 85e2aa2a04280f847a9def592bf7b74b, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 150
+      value: 250
       objectReference: {fileID: 0}
     - target: {fileID: 7822635380429503130, guid: 85e2aa2a04280f847a9def592bf7b74b, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 460
+      value: 850
       objectReference: {fileID: 0}
     - target: {fileID: 7822635380429503130, guid: 85e2aa2a04280f847a9def592bf7b74b, type: 3}
       propertyPath: m_LocalPosition.z
